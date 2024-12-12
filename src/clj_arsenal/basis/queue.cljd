@@ -1,0 +1,120 @@
+(ns clj-arsenal.basis.queue
+  (:require
+   [cljd.core :as cljd]))
+
+(declare empty-queue PersistentQueue)
+
+(deftype TransientQueue [^:mutable ^int count ^:mutable front ^:mutable rear ^:mutable ^boolean edit?]
+  cljd/ITransientCollection
+  (-conj!
+    [tcoll x]
+    (when-not edit?
+      (throw (cljd/ArgumentError "conj! after persistent!")))
+    (set! count (inc count))
+    (if front
+      (set! rear (conj! rear x))
+      (set! front (list x)))
+    tcoll)
+  (-persistent
+    [tcoll]
+    (when-not edit?
+      (throw (cljd/ArgumentError "persistent! called twice")))
+    (set! edit? false)
+    (PersistentQueue nil count front (persistent! rear) -1)))
+
+(deftype PersistentQueue [meta ^:mutable ^int count front rear ^:mutable ^int __hash]
+  Object
+  (toString
+    [coll]
+    (pr-str coll))
+  (==
+   [coll other]
+   (cljd/-equiv coll other))
+  (hashCode
+    [coll]
+    (cljd/-hash coll))
+
+  cljd/IPrint
+  (-print
+    [coll sink]
+    (.write ^cljd/StringSink sink "#queue [")
+    (let [items (concat front rear)]
+      (when (seq items)
+        (cljd/-print (first items) sink)
+        (doseq [item (rest items)]
+          (.write ^cljd/StringSink sink " ")
+          (cljd/-print item sink))))
+    (.write ^cljd/StringSink sink "]"))
+  
+  cljd/IMeta
+  (-meta
+    [coll]
+    meta)
+  
+  cljd/IWithMeta
+  (-with-meta
+    [coll new-meta]
+    (if (identical? meta new-meta)
+      coll
+      (PersistentQueue new-meta count front rear __hash)))
+  
+  cljd/ISeq
+  (-first
+    [coll]
+    (first front))
+  (-rest
+    [coll]
+    (rest (seq coll)))
+  
+  cljd/ISeqable
+  (-seq
+    [coll]
+    (concat front rear))
+  
+  cljd/IEmptyableCollection
+  (-empty
+    [coll]
+    empty-queue)
+  
+  cljd/IHash
+  (-hash
+    [coll]
+    (cljd/ensure-hash __hash (cljd/hash-unordered-coll coll)))
+
+  cljd/IEquiv
+  (-equiv
+    [coll other]
+    (and (instance? PersistentQueue other)
+      (cljd/-equiv-sequential coll other)))
+  
+  cljd/IStack
+  (-peek
+    [coll]
+    (first front))
+  (-pop
+    [coll]
+    (if front
+      (if-let [f1 (next front)]
+        (PersistentQueue meta (dec count) f1 rear -1)
+        (PersistentQueue meta (dec count) (seq rear) [] -1))))
+  
+  cljd/ICollection
+  (-conj
+    [coll x]
+    (if front
+      (PersistentQueue meta (inc count) front (conj (or rear [])) -1)
+      (PersistentQueue meta (inc count) (conj front x) [] nil)))
+  
+  cljd/ICounted
+  (-count
+    [coll]
+    count)
+
+  cljd/IEditableCollection
+  (-as-transient
+    [coll]
+    (TransientQueue count front (transient rear) true))
+  
+  cljd/ISequential)
+
+(def empty-queue (PersistentQueue nil 0 nil [] -1))
