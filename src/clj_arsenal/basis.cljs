@@ -18,7 +18,7 @@
 (deftype ^:private Signal [!listeners]
   IFn
   (-invoke
-    []
+    [this]
     (doseq [listener (vals @!listeners)]
       (listener))))
 
@@ -35,3 +35,21 @@
 (defn sig-unlisten
   [^Signal sig k]
   (swap! (.-!listeners sig) dissoc k))
+
+(defn schedule-once
+  [delay f & args]
+  (js/setTimeout #(apply f args) delay))
+
+(defn schedule-every
+  [delay f & args]
+  (js/setInterval #(apply f args) delay))
+
+(defn cancel-scheduled
+  [handle]
+  (js/clearTimeout handle))
+
+(defn ticker
+  [delay]
+  (let [sig (signal)
+        t (schedule-every delay sig)]
+    [sig #(cancel-scheduled t)]))

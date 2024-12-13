@@ -1,6 +1,8 @@
 (ns clj-arsenal.basis
   (:require
-    [cljd.core :refer [IFn]]))
+   [cljd.core :refer [IFn]]
+   ["dart:async" :as async]
+   ["dart:core" :as dart]))
 
 (defn try-fn
   [f & {catch-fn ::catch finally-fn ::finally}]
@@ -20,7 +22,7 @@
 (deftype ^:private Signal [!listeners]
   IFn
   (-invoke
-    []
+    [this]
     (doseq [listener (vals @!listeners)]
       (listener))))
 
@@ -37,3 +39,21 @@
 (defn sig-unlisten
   [^Signal sig k]
   (swap! (.-!listeners sig) dissoc k))
+
+(defn schedule-once
+  ^async/Timer [delay f & args]
+  (async/Timer (dart/Duration .milliseconds delay) #(apply f args)))
+
+(defn schedule-every
+  ^async/Timer [delay f & args]
+  (async/Timer.periodic (dart/Duration .milliseconds delay) #(apply f args)))
+
+(defn cancel-scheduled
+  [^async/Timer t]
+  (.cancel t))
+
+(defn ticker
+  [delay]
+  (let [sig (signal)
+        t (schedule-every delay sig)]
+    [sig #(cancel-scheduled t)]))
