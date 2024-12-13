@@ -42,11 +42,11 @@
 
 (defn schedule-once
   ^async/Timer [delay f & args]
-  (async/Timer (dart/Duration .milliseconds delay) (fn [_] (apply f args))))
+  (async/Timer (dart/Duration .milliseconds delay) (fn [] (apply f args))))
 
 (defn schedule-every
   ^async/Timer [delay f & args]
-  (async/Timer.periodic (dart/Duration .milliseconds delay) (fn [_] (apply f args))))
+  (async/Timer.periodic (dart/Duration .milliseconds delay) (fn [^async/Timer _] (apply f args))))
 
 (defn cancel-scheduled
   [^async/Timer t]
