@@ -4,12 +4,12 @@
 
 (declare empty-queue PersistentQueue)
 
-(deftype TransientQueue [^:mutable ^int count ^:mutable front ^:mutable rear ^:mutable ^boolean edit?]
+(deftype TransientQueue [^:mutable ^int count ^:mutable front ^:mutable rear ^:mutable ^bool edit?]
   cljd/ITransientCollection
   (-conj!
     [tcoll x]
     (when-not edit?
-      (throw (cljd/ArgumentError "conj! after persistent!")))
+      (throw (cljd/argument-error "conj! after persistent!")))
     (set! count (inc count))
     (if front
       (set! rear (conj! rear x))
@@ -18,7 +18,7 @@
   (-persistent
     [tcoll]
     (when-not edit?
-      (throw (cljd/ArgumentError "persistent! called twice")))
+      (throw (cljd/argument-error "persistent! called twice")))
     (set! edit? false)
     (PersistentQueue nil count front (persistent! rear) -1)))
 
@@ -103,7 +103,7 @@
     [coll x]
     (if front
       (PersistentQueue meta (inc count) front (conj (or rear [])) -1)
-      (PersistentQueue meta (inc count) (conj front x) [] nil)))
+      (PersistentQueue meta (inc count) (conj front x) [] -1)))
   
   cljd/ICounted
   (-count
