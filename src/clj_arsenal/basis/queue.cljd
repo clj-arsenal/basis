@@ -15,7 +15,7 @@
       (set! rear (conj! rear x))
       (set! front (list x)))
     tcoll)
-  (-persistent
+  (-persistent!
     [tcoll]
     (when-not edit?
       (throw (cljd/argument-error "persistent! called twice")))
