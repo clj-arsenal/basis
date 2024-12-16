@@ -30,13 +30,7 @@ Calls continue (eventually) with the resolved value.
      Future
      (-chain
        [future continue]
-       (-> future
-         (.catch
-           (fn [error]
-             (continue error)))
-         (.then
-           (fn [value]
-             (continue value))))
+       (.then future continue .onError continue)
        nil)))
 
 (defn chain
