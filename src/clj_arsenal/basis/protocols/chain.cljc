@@ -1,8 +1,9 @@
 (ns clj-arsenal.basis.protocols.chain "
   Provides a protocol, and some default implementations, for
   working with potentially asynchronous chains of execution.
-")
-
+" (:require
+   [clojure.walk :as walk]
+   [clj-arsenal.basis :refer [try-fn error?]]))
 
 (defprotocol Chain
   (-chain [chainable continue] "
@@ -23,28 +24,26 @@ Calls continue (eventually) with the resolved value.
          (.then
            (fn [value]
              (continue value))))
-       nil)
-
-     default
-     (-chain
-       [value continue]
-       (continue value)
        nil))
-  :clj
-  (extend-protocol Chain
-    Object
-    (-chain
-      [value continue]
-      (continue value))
-    
-    nil
-    (-chain
-      [value continue]
-      (continue value))))
+   :cljd
+   (extend-protocol Chain
+     Future
+     (-chain
+       [future continue]
+       (-> future
+         (.catch
+           (fn [error]
+             (continue error)))
+         (.then
+           (fn [value]
+             (continue value))))
+       nil)))
 
 (defn chain
   [x continue]
-  (-chain x continue)
+  (if (satisfies? Chain x)
+    (-chain x continue)
+    (continue x))
   nil)
 
 (defn chainable
@@ -64,3 +63,52 @@ Calls continue (eventually) with the resolved value.
               existing-value (get old-state :value ::not-found)]
           (when (not= existing-value ::not-found)
             (continue existing-value)))))))
+
+(defn chain-all
+  [x continue & {:keys [walker mapper]}]
+  (try-fn
+    (fn []
+      (let [!placeholders (atom #{})
+            !resolved (atom {})
+            walker (or walker walk/postwalk)
+            mapper (or mapper identity)
+            placeholder-ns (str (gensym))
+            walked (walker
+                     (fn [y]
+                       (let [y-mapped (mapper y)]
+                         (if (satisfies? Chain y-mapped)
+                           (let [placeholder (keyword placeholder-ns (gensym))]
+                             (swap! !placeholders conj placeholder)
+                             (chain y-mapped
+                               (fn [y-resolved]
+                                 (if (error? y-resolved)
+                                   (reset! !resolved y-resolved)
+                                   (swap! !resolved assoc placeholder y-resolved))))
+                             placeholder)
+                           y-mapped)))
+                     x)
+            placeholders @!placeholders
+            on-resolved (fn [_ _ _ resolved]
+                          (cond
+                            (error? resolved)
+                            (do
+                              (continue resolved)
+                              (remove-watch !resolved ::resolved))
+
+                            (= (count resolved) (count placeholders))
+                            (do
+                              (continue
+                                (walk/postwalk
+                                  (fn [y]
+                                    (if (and (keyword? y) (= (namespace y) placeholder-ns))
+                                      (get resolved y y)
+                                      y))
+                                  walked))
+                              (remove-watch !resolved ::resolved))))]
+        (if (empty placeholders)
+          (continue walked)
+          (do
+            (add-watch !resolved ::resolved on-resolved)
+            (on-resolved nil nil nil @!resolved)))
+        nil))
+    :catch continue))
