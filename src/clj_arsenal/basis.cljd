@@ -8,7 +8,7 @@
   [f & {catch-fn ::catch finally-fn ::finally}]
   (try
     (f)
-    (catch Exception ex
+    (catch Error ex
       (when (ifn? catch-fn)
         (catch-fn ex)))
     (finally
@@ -17,14 +17,17 @@
 
 (defn error?
   [x]
-  (instance? Exception x))
+  (instance? Error x))
 
 (deftype ^:private Signal [!listeners]
   IFn
   (-invoke
     [this]
     (doseq [listener (vals @!listeners)]
-      (listener))))
+      (listener)))
+  (-apply
+    [this args]
+    (this)))
 
 (defn signal
   []
