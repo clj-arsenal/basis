@@ -69,7 +69,7 @@
   cljd/ISeqable
   (-seq
     [coll]
-    (concat front rear))
+    (when front (concat front rear)))
   
   cljd/IEmptyableCollection
   (-empty
