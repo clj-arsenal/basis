@@ -67,7 +67,6 @@ Calls continue (eventually) with the resolved value.
             walker (or walker walk/postwalk)
             mapper (or mapper identity)
             placeholder-ns (str (gensym))
-            _ (prn :here1)
             walked (walker
                      (fn [y]
                        (let [y-mapped (mapper y)]
@@ -82,10 +81,8 @@ Calls continue (eventually) with the resolved value.
                              placeholder)
                            y-mapped)))
                      x)
-            _ (prn :her2)
             placeholders @!placeholders
             on-resolved (fn [_ _ _ resolved]
-                          (prn :resolved resolved)
                           (cond
                             (error? resolved)
                             (do
