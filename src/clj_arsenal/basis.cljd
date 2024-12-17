@@ -5,7 +5,7 @@
    ["dart:core" :as dart]))
 
 (defn try-fn
-  [f & {catch-fn ::catch finally-fn ::finally}]
+  [f & {catch-fn :catch finally-fn :finally}]
   (try
     (f)
     (catch Error ex
