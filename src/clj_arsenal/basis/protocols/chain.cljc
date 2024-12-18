@@ -71,7 +71,7 @@ Calls continue (eventually) with the resolved value.
                      (fn [y]
                        (let [y-mapped (mapper y)]
                          (if (satisfies? Chain y-mapped)
-                           (let [placeholder (keyword placeholder-ns (gensym))]
+                           (let [placeholder (keyword placeholder-ns (str (gensym)))]
                              (swap! !placeholders conj placeholder)
                              (chain y-mapped
                                (fn [y-resolved]

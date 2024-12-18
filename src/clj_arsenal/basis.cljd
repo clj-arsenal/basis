@@ -11,13 +11,16 @@
     (catch Error ex
       (when (ifn? catch-fn)
         (catch-fn ex)))
+    (catch Exception ex
+      (when (ifn? catch-fn)
+        (catch-fn ex)))
     (finally
       (when (ifn? finally-fn)
         (finally-fn)))))
 
 (defn error?
   [x]
-  (instance? Error x))
+  (or (instance? Exception x) (instance? Error x)))
 
 (deftype ^:private Signal [!listeners]
   IFn
