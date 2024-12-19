@@ -4,6 +4,14 @@
    ["dart:async" :as async]
    ["dart:core" :as dart]))
 
+(deftype ExceptionWithTrace [cause stackTrace]
+  Exception
+
+  Object
+  (toString
+    [x]
+    (.toString cause)))
+
 (defn try-fn
   [f & {catch-fn :catch finally-fn :finally}]
   (try
@@ -11,9 +19,9 @@
     (catch Error ex
       (when (ifn? catch-fn)
         (catch-fn ex)))
-    (catch Exception ex
+    (catch Exception ex st
       (when (ifn? catch-fn)
-        (catch-fn ex)))
+        (catch-fn (ex-info (.toString ex) {:st st} ex))))
     (finally
       (when (ifn? finally-fn)
         (finally-fn)))))
