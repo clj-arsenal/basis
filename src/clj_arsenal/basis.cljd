@@ -1,6 +1,6 @@
 (ns clj-arsenal.basis
   (:require
-   [cljd.core :refer [IFn]]
+   [cljd.core :refer [IFn IExceptionInfo ExceptionInfo]]
    ["dart:async" :as async]
    ["dart:core" :as dart]))
 
@@ -19,16 +19,19 @@
     (catch Error ex
       (when (ifn? catch-fn)
         (catch-fn ex)))
-    (catch Exception ex st
+    (catch dynamic ex st
       (when (ifn? catch-fn)
-        (catch-fn (ex-info (.toString ex) {:st st} ex))))
+        (catch-fn
+          (if (satisfies? IExceptionInfo ex)
+            (ex-info (if (instance? ExceptionInfo ex) (.-message ^ExceptionInfo ex) (str ex)) (assoc (ex-data ex) :st st) ex)
+            (ex-info (str ex) {:st st} ex)))))
     (finally
       (when (ifn? finally-fn)
         (finally-fn)))))
 
 (defn error?
   [x]
-  (or (instance? Exception x) (instance? Error x)))
+  (or (instance? Exception x) (instance? Error x) (satisfies? IExceptionInfo x)))
 
 (deftype ^:private Signal [!listeners]
   IFn
