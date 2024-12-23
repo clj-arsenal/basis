@@ -26,6 +26,10 @@
   []
   (->Signal (atom {})))
 
+(defn signal?
+  [x]
+  (instance? Signal x))
+
 (defn sig-listen
   ([^Signal sig f]
    (sig-listen sig f f))
