@@ -60,50 +60,52 @@ Calls continue (eventually) with the resolved value.
             (continue existing-value)))))))
 
 (defn chain-all
-  [x continue & {:keys [walker mapper]}]
-  (try-fn
-    (fn []
-      (let [!placeholders (atom #{})
-            !resolved (atom {})
-            walker (or walker walk/postwalk)
-            mapper (or mapper identity)
-            placeholder-ns (str (gensym))
-            walked (walker
-                     (fn [y]
-                       (let [y-mapped (mapper y)]
-                         (if (satisfies? Chain y-mapped)
-                           (let [placeholder (keyword placeholder-ns (str (gensym)))]
-                             (swap! !placeholders conj placeholder)
-                             (chain y-mapped
-                               (fn [y-resolved]
-                                 (if (error? y-resolved)
-                                   (reset! !resolved y-resolved)
-                                   (swap! !resolved assoc placeholder y-resolved))))
-                             placeholder)
-                           y-mapped)))
-                     x)
-            placeholders @!placeholders
-            on-resolved (fn [_ _ _ resolved]
-                          (cond
-                            (error? resolved)
-                            (do
-                              (continue resolved)
-                              (remove-watch !resolved ::resolved))
+  [x & {:keys [walker mapper]}]
+  (chainable
+    (fn [continue]
+      (try-fn
+        (fn []
+          (let [!placeholders (atom #{})
+                !resolved (atom {})
+                walker (or walker walk/postwalk)
+                mapper (or mapper identity)
+                placeholder-ns (str (gensym))
+                walked (walker
+                         (fn [y]
+                           (let [y-mapped (mapper y)]
+                             (if (satisfies? Chain y-mapped)
+                               (let [placeholder (keyword placeholder-ns (str (gensym)))]
+                                 (swap! !placeholders conj placeholder)
+                                 (chain y-mapped
+                                   (fn [y-resolved]
+                                     (if (error? y-resolved)
+                                       (reset! !resolved y-resolved)
+                                       (swap! !resolved assoc placeholder y-resolved))))
+                                 placeholder)
+                               y-mapped)))
+                         x)
+                placeholders @!placeholders
+                on-resolved (fn [_ _ _ resolved]
+                              (cond
+                                (error? resolved)
+                                (do
+                                  (continue resolved)
+                                  (remove-watch !resolved ::resolved))
 
-                            (= (count resolved) (count placeholders))
-                            (do
-                              (continue
-                                (walk/postwalk
-                                  (fn [y]
-                                    (if (and (keyword? y) (= (namespace y) placeholder-ns))
-                                      (get resolved y y)
-                                      y))
-                                  walked))
-                              (remove-watch !resolved ::resolved))))]
-        (if (empty? placeholders)
-          (continue walked)
-          (do
-            (add-watch !resolved ::resolved on-resolved)
-            (on-resolved nil nil nil @!resolved)))
-        nil))
-    :catch continue))
+                                (= (count resolved) (count placeholders))
+                                (do
+                                  (continue
+                                    (walk/postwalk
+                                      (fn [y]
+                                        (if (and (keyword? y) (= (namespace y) placeholder-ns))
+                                          (get resolved y y)
+                                          y))
+                                      walked))
+                                  (remove-watch !resolved ::resolved))))]
+            (if (empty? placeholders)
+              (continue walked)
+              (do
+                (add-watch !resolved ::resolved on-resolved)
+                (on-resolved nil nil nil @!resolved)))
+            nil))
+        :catch continue))))
