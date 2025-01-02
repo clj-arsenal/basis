@@ -6,7 +6,7 @@
    [clj-arsenal.basis :refer [try-fn error?]]))
 
 (defprotocol Chain
-  :extend-via-metadata true
+  #?@(:cljd [] :default [:extend-via-metadata true])
   (-chain [chainable continue] "
 Calls continue (eventually) with the resolved value.
 "))
