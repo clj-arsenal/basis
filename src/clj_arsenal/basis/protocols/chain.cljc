@@ -34,15 +34,22 @@ Calls continue (eventually) with the resolved value.
        (.then future continue .onError continue)
        nil)))
 
-(defn chain
-  [x continue]
+(defn chain "
+If `x` satisfies `Chain`, calls `continue` with the
+resolved value, once it resolves.
+
+Returns `nil`.
+" [x continue]
   (if (satisfies? Chain x)
     (-chain x continue)
     (continue x))
   nil)
 
-(defn chainable
-  [f]
+(defn chainable "
+Invokes `f` with a `continue` function.  Returns
+something that satisfies `Chain`.  When `continue`
+is called, the chainable will resolve to its argument.
+" [f]
   (let [!state (atom {})]
     (f
       (fn [new-value]
@@ -59,8 +66,24 @@ Calls continue (eventually) with the resolved value.
           (when (not= existing-value ::not-found)
             (continue existing-value)))))))
 
-(defn chain-all
-  [x & {:keys [walker mapper]}]
+(defn chain-all "
+Walks the form `x`, waiting for anything the satisfies `Chain`
+to resolve.
+
+Returns a chainable, which resolves to `x` with all its inner
+chainables resolved.
+
+If an inner chainable resolves to an `error?` value, the resolved
+value will be the first such value encountered instead of the
+resolved `x`.
+
+If `walker` is given it'll be used in place of `postwalk` to
+walk `x`.
+
+If `mapper` is given, each inner value of `x` will be passed
+through it; allowing for substitution.  If the value is a
+chainable, then the resolved value will be passed.
+" [x & {:keys [walker mapper]}]
   (chainable
     (fn [continue]
       (try-fn

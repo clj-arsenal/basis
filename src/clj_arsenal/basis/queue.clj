@@ -1,5 +1,8 @@
-(ns clj-arsenal.basis.queue
-  (:import
+(ns clj-arsenal.basis.queue "
+Dialect-independent implementation of a FIFO queue.
+" (:import
    clojure.lang.PersistentQueue))
 
-(def empty-queue PersistentQueue/EMPTY)
+(def empty-queue "
+An empty queue.
+" PersistentQueue/EMPTY)

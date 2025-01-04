@@ -1,8 +1,11 @@
-(ns clj-arsenal.basis.queue
-  (:require
+(ns clj-arsenal.basis.queue "
+Dialect-independent implementation of a FIFO queue.
+" (:require
    [cljd.core :as cljd]))
 
-(declare empty-queue PersistentQueue)
+(declare empty-queue "
+An empty queue.
+" PersistentQueue)
 
 (deftype TransientQueue [^:mutable ^int count ^:mutable front ^:mutable rear ^:mutable ^bool edit?]
   cljd/ITransientCollection
