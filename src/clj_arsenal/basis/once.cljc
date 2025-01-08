@@ -1,14 +1,14 @@
 (ns clj-arsenal.basis.once
   #?(:cljs (:require-macros clj-arsenal.basis.once))
-  #?@(:cljd []
+  #?@(:cljd [(:host-ns (:import (java.util HashMap)))]
       :clj [(:import (java.util HashMap))]))
 
 (defn- ^:macro-support mutable-map
   []
    #?(:cljs (js/Map.) 
-      :cljd/clj-host (atom {}) #_(java.util/HashMap.)
+      :cljd/clj-host (HashMap.)
       :cljd (Map)
-      :clj (java.util/HashMap.)))
+      :clj (HashMap.)))
 
 (defonce ^:macro-support !once-keys (mutable-map))
 (defonce ^:macro-support !once-vals (mutable-map))
@@ -17,16 +17,16 @@
 (defn ^:no-doc ^:macro-support -mput
   [!m k v]
   #?(:cljs (.set !m k v)
-     :cljd/clj-host (vswap! !m assoc k v) #_(.put !m k v)
+     :cljd/clj-host (.put !m k v)
      :cljd (. ^Map !m "[]=" k v)
      :clj (.put !m k v)))
 
 (defn ^:no-doc ^:macro-support -mget
   [m k]
   #?(:cljs (let [v (.get m k)] (if (undefined? v) -not-found v))
-     :cljd/clj-host (get @m k) #_(.getOrDefault ^java.util/HashMap m k -not-found)
+     :cljd/clj-host (.getOrDefault ^HashMap m k -not-found)
      :cljd (get m k -not-found)
-     :clj (.getOrDefault ^java.util/HashMap m k -not-found)))
+     :clj (.getOrDefault ^HashMap m k -not-found)))
 
 (defn ^:macro-support constant?
   [form]
