@@ -153,7 +153,6 @@ chainable, then the resolved value will be passed.
         (fn [continue]
           (add-watch !resolved ::resolved-watch
             (fn [_ _ _ resolved]
-              (prn :walked walked :resolved resolved)
               (or
                 (when (error? resolved)
                   (remove-watch !resolved ::resolved-watch)
