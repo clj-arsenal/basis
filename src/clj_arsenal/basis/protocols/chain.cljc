@@ -78,20 +78,17 @@ is called, the chainable will resolve to its argument.
   (instance? Placeholder x))
 
 (defn chain-all "
-Walks the form `x`, waiting for anything that satisfies `Chain`
-to resolve.
+Resolves all `Chain` implementors in `form`, calling `continue`
+with the result.
 
-Returns a chainable, which resolves to `x` with all its inner
-chainables resolved.
-
-If an inner chainable resolves to an `error?` value, the resolved
-value will be the first such value encountered instead of the
-resolved `x`.
+If an inner chainable resolves to an `error?` value, the result
+will be the first such value encountered instead of the
+resolved `form`.
 
 If `mapper` is given, each inner value of `x` will be passed
 through it; allowing for substitution.  If the value is a
 chainable, then the resolved value will be passed.
-" [form & {:keys [mapper]}]
+" [form continue & {:keys [mapper]}]
   (let [!resolved (atom {})
         mapper (or mapper identity)
 
@@ -148,17 +145,16 @@ chainable, then the resolved value will be passed.
                     p)))))
           form)]
     (if-not (placeholder? walked)
-      walked
-      (chainable
-        (fn [continue]
-          (add-watch !resolved ::resolved-watch
-            (fn [_ _ _ resolved]
-              (or
-                (when (error? resolved)
-                  (remove-watch !resolved ::resolved-watch)
-                  (continue resolved)
-                  true)
-                (let [resolved-root (get resolved walked ::not-found)]
-                  (when-not (= ::not-found resolved-root)
-                    (remove-watch !resolved ::resolved-watch)
-                    (continue resolved-root)))))))))))
+      (continue walked)
+      (add-watch !resolved ::resolved-watch
+        (fn [_ _ _ resolved]
+          (or
+            (when (error? resolved)
+              (remove-watch !resolved ::resolved-watch)
+              (continue resolved)
+              true)
+            (let [resolved-root (get resolved walked ::not-found)]
+              (when-not (= ::not-found resolved-root)
+                (remove-watch !resolved ::resolved-watch)
+                (continue resolved-root)))))))
+    nil))
