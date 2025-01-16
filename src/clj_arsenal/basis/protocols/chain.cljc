@@ -110,9 +110,10 @@ chainable, then the resolved value will be passed.
                           (let [p (placeholder)]
                             (chain x-mapped
                               (fn [x-resolved]
-                                (if (error? x-resolved)
-                                  (reset! !resolved x-resolved)
-                                  (swap! !resolved assoc p x-resolved))))
+                                (when (map? @!resolved)
+                                  (if (error? x-resolved)
+                                    (reset! !resolved x-resolved)
+                                    (swap! !resolved assoc p x-resolved)))))
                             p)))
                       (let [p (placeholder)]
                         (add-watch !resolved p
@@ -138,12 +139,14 @@ chainable, then the resolved value will be passed.
 
                                     x-mapped (mapper x-deps-resolved)]
                                 (if-not (satisfies? Chain x-mapped)
-                                  (swap! !resolved assoc p x-mapped)
+                                  (when (map? @!resolved)
+                                    (swap! !resolved assoc p x-mapped))
                                   (chain x-mapped
                                     (fn [x-resolved]
-                                      (if (error? x-resolved)
-                                        (reset! !resolved x-resolved)
-                                        (swap! !resolved assoc p x-resolved)))))))))
+                                      (when (map? @!resolved)
+                                        (if (error? x-resolved)
+                                          (reset! !resolved x-resolved)
+                                          (swap! !resolved assoc p x-resolved))))))))))
                         p)))))
               form)]
         (if-not (placeholder? walked)
