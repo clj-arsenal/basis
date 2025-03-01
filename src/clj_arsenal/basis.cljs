@@ -1,4 +1,6 @@
-(ns clj-arsenal.basis)
+(ns clj-arsenal.basis
+  (:require
+   [clj-arsenal.basis.common-impl :as impl]))
 
 (defn try-fn "
 Dialect independent version of try with catch-anything.
@@ -87,3 +89,14 @@ to `cancel-scheduled` to cancel the periodic calls.
   (let [sig (signal)
         t (schedule-every delay sig)]
     [sig #(cancel-scheduled t)]))
+
+(defn gather "
+Recursively looks through a form for items for which
+`pred` is truthy.  Returns a vector of all such items.
+
+If `select` is given, then for each form/subform it'll
+be called to choose the parts of the form that should
+be scanned.  It receives the form, and should return
+the thing that should be scanned.
+" [form pred & {:keys [select] :or {select identity}}]
+  (impl/gather form pred :select select))
