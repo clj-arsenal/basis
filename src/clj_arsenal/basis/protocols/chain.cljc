@@ -98,11 +98,11 @@ chainable, then the resolved value will be passed.
             (walk/postwalk
               (fn [x]
                 (cond
-                  (or (map-entry? x) (not (coll? x)))
+                  (map-entry? x)
                   x
 
                   :else
-                  (let [deps (filter placeholder? (if (map? x) (mapcat identity x) x))]
+                  (let [deps (when (coll? x) (filter placeholder? (if (map? x) (mapcat identity x) x)))]
                     (if (empty? deps)
                       (let [x-mapped (mapper x)]
                         (if-not (satisfies? Chain x-mapped)
