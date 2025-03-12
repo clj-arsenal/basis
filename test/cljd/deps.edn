@@ -1,0 +1,34 @@
+{:paths
+ ["src"]
+
+ :deps
+ {tensegritics/clojuredart
+  {:git/url "git@github.com:tensegritics/ClojureDart.git"
+   ; or  "https://github.com/tensegritics/ClojureDart.git"
+   :sha "3d132b2b147b8e9a5e77068af69d39f27f2414a6"}
+
+  me.raystubbs.clj-arsenal/basis
+  {:local/root "../.."}
+
+  me.raystubbs.clj-arsenal/check
+  {#_#_:git/url "https://github.com/clj-arsenal/check.git"
+   #_#_:git/sha "a15d24fe5be392090bcbd457f54d978d302dbd93"
+   :local/root "../../../check"}
+
+  me.raystubbs.clj-arsenal/log
+  {#_#_:git/url "https://github.com/clj-arsenal/log.git"
+   #_#_:git/sha "6f49191729472c1d75c9074e17fa53c74ace84c3"
+   :local/root "../../../log"}
+
+  me.raystubbs.clj-arsenal/basis-test
+  {:local/root ".."}}
+
+ :aliases
+ {:cljd
+  {:main-opts ["-m" "cljd.build"]
+   :clj-arsenal.check/enabled true
+   :clj-arsenal.check/ns-include-re "clj-arsenal[.]basis([.].+)?"}}
+
+ :cljd/opts
+ {:kind :dart
+  :main test}}

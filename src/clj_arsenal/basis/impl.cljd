@@ -1,0 +1,145 @@
+(ns ^:no-doc clj-arsenal.basis.impl
+  (:require
+    [clj-arsenal.basis.protocols.notifier :as notifier]
+    [clj-arsenal.basis.protocols.err :as err]
+    [clj-arsenal.basis.protocols.duration :as duration]
+    [clj-arsenal.basis.protocols.instant :as instant]
+    [clj-arsenal.basis.protocols.dispose :as dispose]
+    [clj-arsenal.basis.protocols.chain :as chain]
+    [cljd.core :refer [IFn IExceptionInfo ExceptionInfo]]
+    ["dart:async" :as async]))
+
+(deftype Signal
+  [!listeners finalizer]
+  IFn
+  (-invoke
+    [_this]
+    (doseq [listener (vals @!listeners)]
+      (listener)))
+  (-apply
+    [this _args]
+    (this))
+  
+  notifier/Notifier
+  (-listen
+    [_this k f]
+    (swap! !listeners assoc k f))
+  (-unlisten
+    [_this k]
+    (swap! !listeners dissoc k))
+  
+  dispose/Dispose
+  (-dispose!
+    [_this]
+    (when (ifn? finalizer)
+      (finalizer))
+    nil))
+
+(defn signal?
+  [x]
+  (instance? Signal x))
+
+(defn signal
+  ([] (->Signal (atom {}) nil))
+  ([finalizer] (->Signal (atom {}) finalizer)))
+
+(defn err
+  ([& {:as data}]
+   (let [data (merge (dissoc data :data) (:data data))]
+     (ex-info (or (:msg data) (:p data)) data))))
+
+(defn err-data
+  [err]
+  (cond
+    (satisfies? err/Err err)
+    (err/-data err)
+    
+    (satisfies? IExceptionInfo err)
+    (ex-data err)
+    
+    :else
+    nil))
+
+(defn ->ms
+  [duration]
+  (cond
+    (satisfies? duration/Duration duration)
+    (duration/-milliseconds duration)
+    
+    (number? duration)
+    duration
+    
+    :else
+    (throw
+      (err
+        :id ::no-conversion-to-ms
+        :msg (str "Can't convert " (pr-str duration) " to milliseconds")))))
+
+(defn schedule-once
+  ^async/Timer [delay f & args]
+  (async/Timer
+    (if (instance? Duration delay)
+      delay
+      (Duration .milliseconds (->ms delay)))
+    (fn [] (apply f args))))
+
+(defn schedule-every
+  ^async/Timer [delay f & args]
+  (async/Timer.periodic
+    (if (instance? Duration delay)
+      delay
+    (Duration .milliseconds (->ms delay)))
+    (fn [^async/Timer _] (apply f args))))
+
+(defn cancel-scheduled
+  [^async/Timer t]
+  (.cancel t)
+  nil)
+
+(defn async
+  [f & args]
+  (Future #(apply f args)))
+
+(extend-protocol err/Err
+  Exception
+  (-data
+    [ex]
+    {:p (.-runtimeType ex)
+     :msg (.toString ex)})
+  
+  Error
+  (-data
+    [ex]
+    (let [st (.-stackTrace ex)]
+      (cond->
+        {:p (.-runtimeType ex)
+         :msg (.toString ex)}
+        
+        (some? st)
+        (assoc :st st))))
+  
+  ExceptionInfo
+  (-data
+    [ex]
+    (merge
+      {:msg (.-message ex)}
+      (ex-data ex))))
+
+(extend-protocol duration/Duration
+  Duration
+  (-milliseconds
+    [d]
+    (/ (.-inMicroseconds d) 1000)))
+
+(extend-protocol instant/Instant
+  DateTime
+  (-milliseconds-since-epoch
+    [dt]
+    (/ (.-microsecondsSinceEpoch dt) 1000)))
+
+(extend-protocol chain/Chain
+  Future
+  (-chain
+    [fut continue]
+    (.then fut continue .onError continue)
+    nil))

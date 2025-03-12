@@ -1,0 +1,31 @@
+{:paths
+ ["src"]
+
+ :deps
+ {me.raystubbs.clj-arsenal/basis
+  {:local/root "../.."}
+
+  me.raystubbs.clj-arsenal/check
+  {#_#_:git/url "https://github.com/clj-arsenal/check.git"
+   #_#_:git/sha "a15d24fe5be392090bcbd457f54d978d302dbd93"
+   :local/root "../../../check"}
+
+  me.raystubbs.clj-arsenal/log
+  {#_#_:git/url "https://github.com/clj-arsenal/log.git"
+   #_#_:git/sha "6f49191729472c1d75c9074e17fa53c74ace84c3"
+   :local/root "../../../log"}
+
+  me.raystubbs.clj-arsenal/basis-test
+  {:local/root ".."}}
+
+ :aliases
+ {:cljs
+  {:extra-deps
+   {cider/cider-nrepl {:mvn/version "0.50.0"}
+    thheller/shadow-cljs {:mvn/version "2.28.19"}}
+
+   :main-opts
+   ["-m" "shadow.cljs.devtools.cli"]
+
+   :clj-arsenal.check/enabled true
+   :clj-arsenal.check/ns-include-re "clj-arsenal[.]basis([.].+)?"}}}
