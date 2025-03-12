@@ -1,6 +1,7 @@
 (ns clj-arsenal.basis
   (:require
-   [clj-arsenal.basis.common-impl :as impl])
+   [clj-arsenal.basis.common-impl :as impl]
+   [clj-arsenal.basis.protocols.error :as error])
   (:import
    clojure.lang.IFn
    [java.util Timer TimerTask]))
@@ -17,13 +18,17 @@ Dialect independent version of try with catch-anything.
       (when (ifn? finally-fn)
         (finally-fn)))))
 
-(defn error? "
+(defn ^:deprecated error? "
 Dialect-independent error check predicate.  Checks for
 exceptions, errors, throwables, ex-info, etc.  Whatever
 makes sense to be considered as, and handled as, an
 error for the host language.
 " [x]
-  (instance? Exception x))
+  (error/err? x))
+
+(def err? error/err?)
+(def err-data error/err-data)
+(def err error/err)
 
 (deftype ^:private Signal [!listeners]
   IFn

@@ -1,26 +1,30 @@
 (ns clj-arsenal.basis
   (:require
-   [clj-arsenal.basis.common-impl :as impl]))
+   [clj-arsenal.basis.common-impl :as impl]
+   [clj-arsenal.basis.protocols.error :as error]))
 
 (defn try-fn "
 Dialect independent version of try with catch-anything.
-" [f & {catch-fn :catch finally-fn :finally}]
+" [f & {catch-fn :catch finally-fn :finally :or {catch-fn identity}}]
   (try
     (f)
     (catch :default ex
-      (when (ifn? catch-fn)
-        (catch-fn ex)))
+      (catch-fn ex))
     (finally
       (when (ifn? finally-fn)
         (finally-fn)))))
 
-(defn error? "
+(defn ^:deprecated error? "
 Dialect-independent error check predicate.  Checks for
 exceptions, errors, throwables, ex-info, etc.  Whatever
 makes sense to be considered as, and handled as, an
 error for the host language.
 " [x]
-  (instance? js/Error x))
+  (error/err? x))
+
+(def err? error/err?)
+(def err-data error/err-data)
+(def err error/err)
 
 (deftype ^:private Signal [!listeners]
   IFn

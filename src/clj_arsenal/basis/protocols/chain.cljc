@@ -50,21 +50,25 @@ Invokes `f` with a `continue` function.  Returns
 something that satisfies `Chain`.  When `continue`
 is called, the chainable will resolve to its argument.
 " [f]
-  (let [!state (atom {})]
-    (f
-      (fn [new-value]
-        (let [[old-state new-state] (swap-vals! !state assoc :value new-value)
-              existing-continue (get old-state :continue ::not-found)]
-          (when (not= existing-continue ::not-found)
-            (existing-continue new-value)))))
+  (try-fn
+    (fn []
+      (let [!state (atom {})]
+        (f
+          (fn [new-value]
+            (let [[old-state new-state] (swap-vals! !state assoc :value new-value)
+                  existing-continue (get old-state :continue ::not-found)]
+              (when (not= existing-continue ::not-found)
+                (existing-continue new-value)))))
 
-    (reify Chain
-      (-chain
-        [_ continue]
-        (let [[old-state _] (swap-vals! !state assoc :continue continue)
-              existing-value (get old-state :value ::not-found)]
-          (when (not= existing-value ::not-found)
-            (continue existing-value)))))))
+        (reify Chain
+          (-chain
+            [_ continue]
+            (let [[old-state _] (swap-vals! !state assoc :continue continue)
+                  existing-value (get old-state :value ::not-found)]
+              (when (not= existing-value ::not-found)
+                (continue existing-value)))))))
+    
+    :catch identity))
 
 (defrecord ^:private Placeholder [k])
 (defonce ^:private !placeholder-key (volatile! 0))

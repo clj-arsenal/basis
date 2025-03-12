@@ -2,45 +2,36 @@
   (:require
    [cljd.core :refer [IFn IExceptionInfo ExceptionInfo]]
    [clj-arsenal.basis.common-impl :as impl]
+   [clj-arsenal.basis.protocols.error :as error]
    ["dart:async" :as async]
    ["dart:core" :as dart]))
 
 (defn try-fn "
 Dialect independent version of try with catch-anything.
-" [f & {catch-fn :catch finally-fn :finally}]
+" [f & {catch-fn :catch finally-fn :finally :or {catch-fn identity}}]
   (try
     (f)
     (catch Error ex
-      (when (ifn? catch-fn)
-        (catch-fn ex)))
-    (catch dynamic ex st
-      ;; ExceptionInfo doesn't implement Exception
-      ;; for some reason. And neither ExceptionInfo
-      ;; nor Exception gets a StackTrace attached by
-      ;; default, so we wrap either in an ExceptionInfo
-      ;; that has the StackTrace attached under the `:st`
-      ;; key.  The default logger for clj-arsenal.log
-      ;; is aware of this key.
-      (when (ifn? catch-fn)
-        (catch-fn
-          (if (satisfies? IExceptionInfo ex)
-            (ex-info
-              (if (instance? ExceptionInfo ex)
-                (.-message ^ExceptionInfo ex)
-                (str ex))
-              (assoc (ex-data ex) :st st) ex)
-            (ex-info (str ex) {:st st} ex)))))
+      (catch-fn ex))
+    (catch IExceptionInfo ex st
+      (catch-fn (ex-info (.-message ex) (assoc (.-data ex) :st ex) (.-cause ex))))
+    (catch Exception ex st
+      (catch-fn (ex-info (.toString ex) {:st st} ex)))
     (finally
       (when (ifn? finally-fn)
         (finally-fn)))))
 
-(defn error? "
+(defn ^:deprecated error? "
 Dialect-independent error check predicate.  Checks for
 exceptions, errors, throwables, ex-info, etc.  Whatever
 makes sense to be considered as, and handled as, an
 error for the host language.
 " [x]
-  (or (instance? Exception x) (instance? Error x) (satisfies? IExceptionInfo x)))
+  (error/err? x))
+
+(def err? error/err?)
+(def err-data error/err-data)
+(def err error/err)
 
 (deftype ^:private Signal [!listeners]
   IFn
