@@ -94,6 +94,26 @@ chainable, then the resolved value will be passed.
       (let [!resolved (atom {})
             mapper (or mapper identity)
 
+            wait-resolved
+            (fn wait-resolved [deps f]
+              (let [watch-key (gensym)
+                    !done? (atom false)
+                    
+                    on-resolved
+                    (fn [resolved]
+                      (cond
+                        (and (error? resolved) (compare-and-set! !done? false true))
+                        (do
+                          (continue resolved)
+                          (remove-watch !resolved watch-key))
+
+                        (and (every? #(contains? resolved %) deps) (compare-and-set! !done? false true))
+                        (do
+                          (f resolved)
+                          (remove-watch !resolved watch-key))))]
+                (add-watch !resolved watch-key (fn [_ _ _ resolved] (on-resolved resolved)))
+                (on-resolved @!resolved)))
+
             walked
             (walk/postwalk
               (fn [x]
@@ -116,51 +136,42 @@ chainable, then the resolved value will be passed.
                                     (swap! !resolved assoc p x-resolved)))))
                             p)))
                       (let [p (placeholder)]
-                        (add-watch !resolved p
-                          (fn [_ _ _ resolved]
-                            (when (every? #(contains? resolved %) deps)
-                              (remove-watch !resolved p)
-                              (let [x-deps-resolved
-                                    (walk/walk
-                                      (fn [y]
-                                        (cond
-                                          (map-entry? y)
-                                          (let [[k v] y]
-                                            [(cond->> k (placeholder? k) (get resolved))
-                                             (cond->> v (placeholder? v) (get resolved))])
+                        (wait-resolved deps
+                          (fn [resolved]
+                            (let [x-deps-resolved
+                                  (walk/walk
+                                    (fn [y]
+                                      (cond
+                                        (map-entry? y)
+                                        (let [[k v] y]
+                                          [(cond->> k (placeholder? k) (get resolved))
+                                           (cond->> v (placeholder? v) (get resolved))])
 
-                                          (placeholder? y)
-                                          (get resolved y)
+                                        (placeholder? y)
+                                        (get resolved y)
 
-                                          :else
-                                          y))
-                                      identity
-                                      x)
+                                        :else
+                                        y))
+                                    identity
+                                    x)
 
-                                    x-mapped (mapper x-deps-resolved)]
-                                (if-not (satisfies? Chain x-mapped)
-                                  (when (map? @!resolved)
-                                    (swap! !resolved assoc p x-mapped))
-                                  (chain x-mapped
-                                    (fn [x-resolved]
-                                      (when (map? @!resolved)
-                                        (if (error? x-resolved)
-                                          (reset! !resolved x-resolved)
-                                          (swap! !resolved assoc p x-resolved))))))))))
+                                  x-mapped (mapper x-deps-resolved)]
+                              (if-not (satisfies? Chain x-mapped)
+                                (when (map? @!resolved)
+                                  (swap! !resolved assoc p x-mapped))
+                                (chain x-mapped
+                                  (fn [x-resolved]
+                                    (when (map? @!resolved)
+                                      (if (error? x-resolved)
+                                        (reset! !resolved x-resolved)
+                                        (swap! !resolved assoc p x-resolved)))))))))
+
                         p)))))
               form)]
         (if-not (placeholder? walked)
           (continue walked)
-          (add-watch !resolved ::resolved-watch
-            (fn [_ _ _ resolved]
-              (or
-                (when (error? resolved)
-                  (remove-watch !resolved ::resolved-watch)
-                  (continue resolved)
-                  true)
-                (let [resolved-root (get resolved walked ::not-found)]
-                  (when-not (= ::not-found resolved-root)
-                    (remove-watch !resolved ::resolved-watch)
-                    (continue resolved-root)))))))))
+          (wait-resolved #{walked}
+            (fn [resolved]
+              (continue (get resolved walked)))))))
     :catch continue)
     nil)
