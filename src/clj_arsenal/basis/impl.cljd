@@ -1,0 +1,109 @@
+(ns ^:no-doc clj-arsenal.basis.impl
+  (:require
+    [clj-arsenal.basis.protocols.notifier :as notifier]
+    [clj-arsenal.basis.protocols.error :as error]
+    [clj-arsenal.basis.protocols.duration :as duration]
+    [clj-arsenal.basis.protocols.dispose :as dispose]
+    [clj-arsenal.basis.common-impl :as common-impl]
+    [cljd.core :refer [IFn IExceptionInfo ExceptionInfo]]
+    ["dart:async" :as async])
+  (:host-ns
+    (:require
+      [clj-arsenal.basis.common-impl :as common-impl])))
+
+(deftype Signal
+  [!listeners finalizer]
+  IFn
+  (-invoke
+    [this]
+    (doseq [listener (vals @!listeners)]
+      (listener)))
+  (-apply
+    [this args]
+    (this))
+  
+  notifier/Notifier
+  (-listen
+    [_this k f]
+    (swap! !listeners assoc k f))
+  (-unlisten
+    [_this k]
+    (swap! !listeners dissoc k))
+  
+  dispose/Dispose
+  (-dispose!
+    [_this]
+    (when (ifn? finalizer)
+      (finalizer))
+    nil))
+
+(defn signal?
+  [x]
+  (instance? Signal x))
+
+(defn signal
+  ([] (->Signal (atom {}) nil))
+  ([finalizer] (->Signal (atom {}) finalizer)))
+
+(deftype Error
+  [data]
+  :extends (Exception (or (:id data) (:p data)))
+  (error/-data data))
+
+(defn error
+  ([& {:as data}] (->Error data))
+  ([{:as data}] (->Error data)))
+
+(defn ->ms
+  [duration]
+  (cond
+    (satisfies? duration/Duration duration)
+    (duration/-to-milliseconds duration)
+    
+    (number? duration)
+    duration
+    
+    :else
+    (throw
+      (error
+        :id ::no-conversion-to-ms
+        :msg (str "Can't convert " (pr-str duration) " to milliseconds")))))
+
+(defn schedule-once
+  ^async/Timer [delay f & args]
+  (async/Timer
+    (if (instance? Duration delay)
+      delay
+      (Duration .milliseconds (->ms delay)))
+    (fn [] (apply f args))))
+
+(defn schedule-every
+  ^async/Timer [delay f & args]
+  (async/Timer.periodic
+    (if (instance? Duration delay)
+      delay
+    (Duration .milliseconds (->ms delay)))
+    (fn [^async/Timer _] (apply f args))))
+
+(defn cancel-scheduled
+  [^async/Timer t]
+  (.cancel t)
+  nil)
+
+(defn async
+  [f & args]
+  (Future #(apply f args)))
+
+(defn ^:deprecated try-fn
+  [f & {catch-fn :catch finally-fn :finally :or {catch-fn identity}}]
+  (try
+    (f)
+    (catch Error ex
+      (catch-fn ex))
+    (catch IExceptionInfo ex st
+      (catch-fn (ex-info (.-message ex) (assoc (.-data ex) :st ex) (.-cause ex))))
+    (catch Exception ex st
+      (catch-fn (ex-info (.toString ex) {:st st} ex)))
+    (finally
+      (when (ifn? finally-fn)
+        (finally-fn)))))

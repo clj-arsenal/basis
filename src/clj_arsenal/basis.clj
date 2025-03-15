@@ -26,10 +26,6 @@ error for the host language.
 " [x]
   (error/err? x))
 
-(def err? error/err?)
-(def err-data error/err-data)
-(def err error/err)
-
 (deftype ^:private Signal [!listeners]
   IFn
   (invoke
