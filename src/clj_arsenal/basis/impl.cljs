@@ -1,13 +1,11 @@
-(ns ^:no-doc clj-arsenal.basis.impl
+(ns clj-arsenal.basis.impl
   (:require
     [clj-arsenal.basis.protocols.notifier :as notifier]
     [clj-arsenal.basis.protocols.err :as err]
     [clj-arsenal.basis.protocols.duration :as duration]
     [clj-arsenal.basis.protocols.instant :as instant]
     [clj-arsenal.basis.protocols.dispose :as dispose]
-    [clj-arsenal.basis.protocols.chain :as chain]
-    [cljd.core :refer [IFn IExceptionInfo ExceptionInfo]]
-    ["dart:async" :as async]))
+    [clj-arsenal.basis.protocols.chain :as chain]))
 
 (deftype Signal
   [!listeners finalizer]
@@ -16,10 +14,7 @@
     [_this]
     (doseq [listener (vals @!listeners)]
       (listener)))
-  (-apply
-    [this _args]
-    (this))
-  
+
   notifier/Notifier
   (-listen
     [_this k f]
@@ -43,27 +38,29 @@
   ([] (->Signal (atom {}) nil))
   ([finalizer] (->Signal (atom {}) finalizer)))
 
-(deftype Error
-  [data]
-  :extends (Exception (:p data))
+(def Err
+  (js* "class Err extends globalThis.Error {
+    constructor(msg, data) {
+      super(msg);
+      this.data = data;
+    }
+  }"))
 
+(extend-type Err
   err/Err
   (-data
-    [_this]
-    data))
+    [^Err err]
+    (.-data err)))
 
 (defn err
-  ([& {:as data}] (->Error data))
-  ([{:as data}] (->Error data)))
+  ([& {:as data}] (new Err (or (:msg data) (:p data)) data))
+  ([{:as data}] (new Err (or (:msg data) (:p data)) data)))
 
 (defn err-data
   [err]
   (cond
     (satisfies? err/Err err)
     (err/-data err)
-    
-    (satisfies? IExceptionInfo err)
-    (ex-data err)
     
     :else
     nil))
@@ -80,71 +77,59 @@
     :else
     (throw
       (err
-        :id ::no-conversion-to-ms
+        :p ::no-conversion-to-ms
         :msg (str "Can't convert " (pr-str duration) " to milliseconds")))))
 
 (defn schedule-once
-  ^async/Timer [delay f & args]
-  (async/Timer
-    (if (instance? Duration delay)
-      delay
-      (Duration .milliseconds (->ms delay)))
-    (fn [] (apply f args))))
+  [delay f & args]
+  (js/setTimeout #(apply f args) (->ms delay)))
 
 (defn schedule-every
-  ^async/Timer [delay f & args]
-  (async/Timer.periodic
-    (if (instance? Duration delay)
-      delay
-    (Duration .milliseconds (->ms delay)))
-    (fn [^async/Timer _] (apply f args))))
+  [delay f & args]
+  (js/setInterval #(apply f args) (->ms delay)))
 
 (defn cancel-scheduled
-  [^async/Timer t]
-  (.cancel t)
+  [h]
+  (js/clearTimeout h)
   nil)
 
 (defn async
   [f & args]
-  (Future #(apply f args)))
+  (js/Promise.
+    (fn [resolve reject]
+      (js/setTimeout
+        (fn []
+          (try
+            (resolve (apply f args))
+            (catch :default ex
+              (reject ex))))))))
 
 (extend-protocol err/Err
   ExceptionInfo
   (-data
     [ex]
     (merge
-      {:p (-> ex .-runtimeType .toString)
+      {:p (some-> ex .-constructor .-name)
        :msg (.-message ex)}
       (ex-data ex)))
   
-  Exception
+  js/Error
   (-data
     [ex]
-    {:p (-> ex .-runtimeType .toString)
-     :msg (.toString ex)})
-  
-  Error
-  (-data
-    [ex]
-    {:p (-> ex .-runtimeType .toString)
-     :msg (.toString ex)
-     :st (.-stackTrace ex)}))
-
-(extend-protocol duration/Duration
-  Duration
-  (-milliseconds
-    [d]
-    (/ (.-inMicroseconds d) 1000)))
+    {:p (-> ex .-constructor .-name)
+     :msg (.toString ex)}))
 
 (extend-protocol instant/Instant
-  DateTime
+  js/Date
   (-milliseconds-since-epoch
     [dt]
-    (/ (.-microsecondsSinceEpoch dt) 1000)))
+    (.valueOf dt)))
 
 (extend-protocol chain/Chain
-  Future
+  js/Promise
   (-chain
-    [fut continue]
-    (.then fut continue .onError continue)
+    [p continue]
+    (-> p
+        (.then p continue)
+        (.catch p continue))
     nil))

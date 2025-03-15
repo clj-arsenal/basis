@@ -1,26 +1,58 @@
 (ns clj-arsenal.basis
   (:require
-    [clj-arsenal.basis.common-impl :as common-impl]
-    [clj-arsenal.basis.impl :as impl]
-    [clj-arsenal.basis.protocols.error :as error]
-    [clj-arsenal.basis.protocols.notifier :as notifier])
+   [clj-arsenal.basis.common-impl :as common-impl]
+   [clj-arsenal.basis.impl :as impl]
+   [clj-arsenal.basis.protocols.err :as err]
+   [clj-arsenal.basis.protocols.notifier :as notifier]
+   [clj-arsenal.basis.protocols.dispose :as dispose]
+   [clj-arsenal.basis.protocols.path-watchable :as path-watchable])
   #?(:cljd
      (:host-ns (:require [clj-arsenal.basis.common-impl :as common-impl]))
 
      :cljs
      (:require-macros clj-arsenal.basis)))
 
-#?(:cljd
-   (defmacro use
-     [& stuff]
-     (binding [common-impl/*expand-host* :cljd]
-       (common-impl/expand-use-body stuff)))
+#?(:cljd/clj-host
+   (defonce ^:private deps
+     (try
+       (some->
+         (requiring-resolve 'clojure.java.basis/current-basis)
+         (apply nil)
+         :argmap)
+       (catch Exception _
+         nil)))
+
+   :cljd nil
 
    :clj
-   (defmacro use
+   (defonce ^:private deps
+     (try
+       (some->
+         (requiring-resolve 'clojure.java.basis/current-basis)
+         (apply nil)
+         :argmap)
+       (catch Exception ex
+         (prn ex)
+         nil))))
+
+#?(:clj
+   (defmacro get-in-config
+     ([path default]
+      (get-in deps path default))
+     ([path]
+      (get-in deps path))))
+
+#?(:cljd
+   (defmacro with-dispose
+     [& stuff]
+     (binding [common-impl/*expand-host* :cljd]
+       (common-impl/expand-with-dispose-body stuff)))
+
+   :clj
+   (defmacro with-dispose
      [& stuff]
      (binding [common-impl/*expand-host* (if (:ns &env) :cljs :clj)]
-       (common-impl/expand-use-body stuff))))
+       (common-impl/expand-with-dispose-body stuff))))
 
 #?(:cljd
    (defmacro m
@@ -38,19 +70,19 @@
 (def signal? impl/signal?)
 (def signal impl/signal)
 
-(def error impl/error)
+(def err impl/err)
 
-(defn error?
+(defn err?
   [x]
-  (satisfies? error/Error x))
+  (satisfies? err/Err x))
 
-(defn ^:deprecated sig-listen
-  ([sig f] (notifier/-listen sig f f))
-  ([sig k f] (notifier/-listen sig k f)))
+(defn notifier-listen
+  ([notifier f] (notifier/-listen notifier f f))
+  ([notifier k f] (notifier/-listen notifier k f)))
 
-(defn ^:deprecated sig-unlisten
-  [sig k]
-  (notifier/-unlisten sig k))
+(defn notifier-unlisten
+  [notifier k]
+  (notifier/-unlisten notifier k))
 
 (def schedule-once impl/schedule-once)
 (def schedule-every impl/schedule-every)
@@ -75,3 +107,26 @@
 
 (def gather common-impl/gather)
 (def ->ms impl/->ms)
+
+(defn dispose!
+  [x]
+  (when (satisfies? dispose/Dispose x)
+    (dispose/-dispose! x))
+  nil)
+
+(def chain common-impl/chain)
+(def chain-all common-impl/chain-all)
+(def chainable common-impl/chainable)
+
+(defn path-watch
+  [pw k path f]
+  (path-watchable/-path-watch pw k path f)
+  nil)
+
+(defn path-unwatch
+  [pw k]
+  (path-watchable/-path-unwatch pw k)
+  nil)
+
+(def err-any common-impl/err-any)
+(def err-when common-impl/err-where)

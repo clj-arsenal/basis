@@ -1,25 +1,19 @@
 (ns ^:no-doc clj-arsenal.basis.impl
   (:require
-    [clj-arsenal.basis.protocols.notifier :as notifier]
-    [clj-arsenal.basis.protocols.duration :as duration]
-    [clj-arsenal.basis.protocols.error :as error]
-    [clj-arsenal.basis.protocols.dispose :as dispose]
-    [clj-arsenal.basis.common-impl :as common-impl])
+   [clj-arsenal.basis.protocols.notifier :as notifier]
+   [clj-arsenal.basis.protocols.duration :as duration]
+   [clj-arsenal.basis.protocols.instant :as instant]
+   [clj-arsenal.basis.protocols.err :as err]
+   [clj-arsenal.basis.protocols.dispose :as dispose]
+   [clj-arsenal.basis.protocols.chain :as chain])
   (:import
-    clojure.lang.IFn
-    clj-arsenal.basis.protocols.Error
-    [java.util Timer TimerTask]))
-
-(defn ^:deprecated try-fn
-  [f & {catch-fn :catch finally-fn :finally}]
-  (try
-    (f)
-    (catch Exception ex
-      (when (ifn? catch-fn)
-        (catch-fn ex)))
-    (finally
-      (when (ifn? finally-fn)
-        (finally-fn)))))
+   clojure.lang.IFn
+   clojure.lang.IExceptionInfo
+   clojure.lang.ExceptionInfo
+   java.util.function.BiFunction
+   [java.util.concurrent CompletionStage Future]
+   [java.util Timer TimerTask Date]
+   [java.time Duration Instant]))
 
 (deftype Signal
   [!listeners finalizer]
@@ -57,24 +51,35 @@
 
 (defonce ^:private timer (Timer. true))
 
-(defn error
+(defn err
   [& {:as data}]
-  (proxy [Exception Error] [(str (or (:id data) (:p data)))]
-    (-data [] data)))
+  (ExceptionInfo. (str (:msg data) (:p data)) data))
+
+(defn err-data
+  [err]
+  (cond
+    (satisfies? err/Err err)
+    (err/-data err)
+    
+    (satisfies? IExceptionInfo err)
+    (ex-data err)
+    
+    :else
+    nil))
 
 (defn ->ms
   [duration]
   (cond
     (satisfies? duration/Duration duration)
-    (duration/-to-milliseconds duration)
+    (duration/-milliseconds duration)
     
     (number? duration)
     duration
     
     :else
     (throw
-      (error
-        :id ::no-conversion-to-ms
+      (err
+        :p ::no-conversion-to-ms
         :msg (str "Can't convert " (pr-str duration) " to milliseconds")))))
 
 (defn schedule-once
@@ -98,18 +103,56 @@
 
 (defn async
   [f & args]
-  (common-impl/chainable
-    (fn [continue]
-      (future
-        (continue (apply f args))))))
+  (future
+    (apply f args)))
 
-(defn ^:deprecated try-fn
-  [f & {catch-fn :catch finally-fn :finally}]
-  (try
-    (f)
-    (catch Exception ex
-      (when (ifn? catch-fn)
-        (catch-fn ex)))
-    (finally
-      (when (ifn? finally-fn)
-        (finally-fn)))))
+(extend-protocol err/Err
+  ExceptionInfo
+  (-data
+    [ex]
+    (merge
+      {:p (-> ex .getType .toString)
+       :msg (.-message ex)}
+      (ex-data ex)))
+  
+  Throwable
+  (-data
+    [ex]
+    {:p (-> ex .getType .toString)
+     :msg (.toString ex)}))
+
+(extend-protocol duration/Duration
+  Duration
+  (-milliseconds
+    [d]
+    (/ (.toNanos d) 1000000)))
+
+(extend-protocol instant/Instant
+  Instant
+  (-milliseconds-since-epoch
+    [i]
+    (.toEpochMilli i))
+
+  Date
+  (-milliseconds-since-epoch
+    [d]
+    (.getTime d)))
+
+(extend-protocol chain/Chain
+  CompletionStage
+  (-chain
+    [cs continue]
+    (.handle
+      cs
+      ^BiFunction
+      (fn [result err]
+        (continue (or err result))
+        nil)))
+  
+  Future
+  (-chain
+    [fut continue]
+    (try
+      (continue @fut)
+      (catch Throwable t
+        (continue t)))))
