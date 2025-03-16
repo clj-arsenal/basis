@@ -85,7 +85,7 @@
       (= :cljd *expand-host*)
       `(catch dynamic ex# st#
          (let [mapper# ~mapper-expr]
-           (if-some [~binding-sym (mapper# ex# sym#)]
+           (if-some [~binding-sym (mapper# ex# st#)]
              ~(body-fn body)
              (throw ex#))))
 
@@ -134,7 +134,7 @@
 #?(:cljd
    (defn err-any
      ([err st]
-      (when (satisfies? error/Error err)
+      (when (satisfies? err/Err err)
         (impl/err (assoc (impl/err-data err) :st st :cause err)))))
 
    :default
@@ -265,7 +265,7 @@
                              x-mapped
                              (fn [x-resolved]
                                (when (map? @!resolved)
-                                 (if (instance? err/Err x-resolved)
+                                 (if (satisfies? err/Err x-resolved)
                                    (reset! !resolved x-resolved)
                                    (swap! !resolved assoc p x-resolved)))))))))
                    p)))))

@@ -5,42 +5,24 @@
    [clj-arsenal.basis.protocols.err :as err]
    [clj-arsenal.basis.protocols.notifier :as notifier]
    [clj-arsenal.basis.protocols.dispose :as dispose]
-   [clj-arsenal.basis.protocols.path-watchable :as path-watchable])
+   [clj-arsenal.basis.protocols.path-watchable :as path-watchable]
+   #?@(:cljd []
+       :clj [[clj-arsenal.basis.config :as config]]))
   #?(:cljd
-     (:host-ns (:require [clj-arsenal.basis.common-impl :as common-impl]))
+     (:host-ns
+      (:require
+       [clj-arsenal.basis.common-impl :as common-impl]
+       [clj-arsenal.basis.config :as config]))
 
      :cljs
      (:require-macros clj-arsenal.basis)))
 
-#?(:cljd/clj-host
-   (defonce ^:private deps
-     (try
-       (some->
-         (requiring-resolve 'clojure.java.basis/current-basis)
-         (apply nil)
-         :argmap)
-       (catch Exception _
-         nil)))
-
-   :cljd nil
-
-   :clj
-   (defonce ^:private deps
-     (try
-       (some->
-         (requiring-resolve 'clojure.java.basis/current-basis)
-         (apply nil)
-         :argmap)
-       (catch Exception ex
-         (prn ex)
-         nil))))
-
 #?(:clj
    (defmacro get-in-config
      ([path default]
-      (get-in deps path default))
+      (config/get-in-config path default))
      ([path]
-      (get-in deps path))))
+      (config/get-in-config path))))
 
 #?(:cljd
    (defmacro with-dispose

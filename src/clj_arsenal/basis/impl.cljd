@@ -43,9 +43,9 @@
   ([] (->Signal (atom {}) nil))
   ([finalizer] (->Signal (atom {}) finalizer)))
 
-(deftype Error
+(deftype Err
   [data]
-  :extends (Exception (:p data))
+  Exception
 
   err/Err
   (-data
@@ -53,8 +53,8 @@
     data))
 
 (defn err
-  ([& {:as data}] (->Error data))
-  ([{:as data}] (->Error data)))
+  ([& {:as data}] (->Err data))
+  ([{:as data}] (->Err data)))
 
 (defn err-data
   [err]
