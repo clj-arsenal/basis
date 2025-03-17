@@ -135,7 +135,7 @@
    (defn err-any
      ([err st]
       (when (satisfies? err/Err err)
-        (impl/err (assoc (impl/err-data err) :st st :cause err)))))
+        (impl/err (merge {:st st :p (.-runtimeType err)} (impl/err-data err))))))
 
    :default
    (defn err-any

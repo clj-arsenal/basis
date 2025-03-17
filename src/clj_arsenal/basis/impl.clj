@@ -111,14 +111,13 @@
   (-data
     [ex]
     (merge
-      {:p (-> ex .getType .toString)
-       :msg (.-message ex)}
+      {:msg (.-message ex)}
       (ex-data ex)))
   
   Throwable
   (-data
     [ex]
-    {:p (-> ex .getType .toString)
+    {:p (type ex)
      :msg (.toString ex)}))
 
 (extend-protocol duration/Duration

@@ -53,6 +53,7 @@
 (def signal impl/signal)
 
 (def err impl/err)
+(def err-data impl/err-data)
 
 (defn err?
   [x]

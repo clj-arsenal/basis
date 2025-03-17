@@ -43,18 +43,9 @@
   ([] (->Signal (atom {}) nil))
   ([finalizer] (->Signal (atom {}) finalizer)))
 
-(deftype Err
-  [data]
-  Exception
-
-  err/Err
-  (-data
-    [_this]
-    data))
-
 (defn err
-  ([& {:as data}] (->Err data))
-  ([{:as data}] (->Err data)))
+  ([& {:as data}] (ex-info (or (:msg data) (:p data)) data))
+  ([{:as data}] (ex-info (or (:msg data) (:p data)) data)))
 
 (defn err-data
   [err]
@@ -109,26 +100,25 @@
   (Future #(apply f args)))
 
 (extend-protocol err/Err
-  ExceptionInfo
-  (-data
-    [ex]
-    (merge
-      {:p (-> ex .-runtimeType .toString)
-       :msg (.-message ex)}
-      (ex-data ex)))
-  
   Exception
   (-data
     [ex]
-    {:p (-> ex .-runtimeType .toString)
+    {:p (.-runtimeType ex)
      :msg (.toString ex)})
   
   Error
   (-data
     [ex]
-    {:p (-> ex .-runtimeType .toString)
+    {:p (.-runtimeType ex)
      :msg (.toString ex)
-     :st (.-stackTrace ex)}))
+     :st (.-stackTrace ex)})
+  
+  ExceptionInfo
+  (-data
+    [ex]
+    (merge
+      {:msg (.-message ex)}
+      (ex-data ex))))
 
 (extend-protocol duration/Duration
   Duration

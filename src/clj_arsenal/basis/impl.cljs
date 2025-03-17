@@ -109,7 +109,7 @@
   (-data
     [ex]
     (merge
-      {:p (some-> ex .-constructor .-name)
+      {:p (.-constructor ex)
        :msg (.-message ex)}
       (ex-data ex)))
   
