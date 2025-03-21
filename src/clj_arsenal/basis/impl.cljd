@@ -44,8 +44,9 @@
   ([finalizer] (->Signal (atom {}) finalizer)))
 
 (defn err
-  ([& {:as data}] (ex-info (or (:msg data) (:p data)) data))
-  ([{:as data}] (ex-info (or (:msg data) (:p data)) data)))
+  ([& {:as data}]
+   (let [data (merge (dissoc data :data) (:data data))]
+     (ex-info (or (:msg data) (:p data)) data))))
 
 (defn err-data
   [err]

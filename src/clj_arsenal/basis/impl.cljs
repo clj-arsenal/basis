@@ -53,8 +53,9 @@
     (.-data err)))
 
 (defn err
-  ([& {:as data}] (new Err (or (:msg data) (:p data)) data))
-  ([{:as data}] (new Err (or (:msg data) (:p data)) data)))
+  [& {:as data}]
+  (let [data (merge (dissoc data) (:data data))]
+    (new Err (or (:msg data) (:p data)) data)))
 
 (defn err-data
   [err]

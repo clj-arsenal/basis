@@ -53,7 +53,8 @@
 
 (defn err
   [& {:as data}]
-  (ExceptionInfo. (str (:msg data) (:p data)) data))
+  (let [data (merge (dissoc data :data) (:data data))]
+    (ExceptionInfo. (str (:msg data) (:p data)) data)))
 
 (defn err-data
   [err]
