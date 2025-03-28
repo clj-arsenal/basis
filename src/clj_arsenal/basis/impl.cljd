@@ -110,9 +110,13 @@
   Error
   (-data
     [ex]
-    {:p (.-runtimeType ex)
-     :msg (.toString ex)
-     :st (.-stackTrace ex)})
+    (let [st (.-stackTrace ex)]
+      (cond->
+        {:p (.-runtimeType ex)
+         :msg (.toString ex)}
+        
+        (some? st)
+        (assoc :st st))))
   
   ExceptionInfo
   (-data

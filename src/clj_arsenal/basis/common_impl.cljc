@@ -157,20 +157,20 @@
         (fn [new-value]
           (let
             [[old-state _new-state] (swap-vals! !state assoc :value new-value)
-              existing-continue (get old-state :continue ::not-found)]
-                                 (when (not= existing-continue ::not-found)
+             existing-continue (get old-state :continue ::not-found)]
+            (when (not= existing-continue ::not-found)
               (existing-continue new-value)))))
 
-        (reify chain/Chain
+      (reify chain/Chain
         (-chain
           [_ continue]
-            (let
+          (let
             [[old-state _] (swap-vals! !state assoc :continue continue)
-              existing-value (get old-state :value ::not-found)]
-                              (when (not= existing-value ::not-found)
+             existing-value (get old-state :value ::not-found)]
+            (when (not= existing-value ::not-found)
               (continue existing-value))))))
-                (catch #?(:cljd dynamic :clj Throwable :cljs :dynamic) ex #?@(:cljd [st])
-    (err-any ex #?(:cljd st)))))
+    (catch #?(:cljd dynamic :clj Throwable :cljs :dynamic) ex #?@(:cljd [st])
+      (err-any ex #?(:cljd st)))))
 
 (defrecord ^:private Placeholder [k])
 (defonce ^:private !placeholder-key (volatile! 0))
@@ -277,5 +277,5 @@
           (fn [resolved]
             (continue (get resolved walked))))))
     (catch #?(:cljd dynamic :clj Throwable :cljs :dynamic) ex #?@(:cljd [st])
-      (err-any ex #?(:cljd st))))
+      (continue (err-any ex #?(:cljd st)))))
   nil)
