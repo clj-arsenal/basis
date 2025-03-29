@@ -2,18 +2,11 @@
  ["src"]
 
  :deps
- {org.clojure/clojure
-  {:mvn/version "1.12.0"}
-
-  me.raystubbs.clj-arsenal/basis
+ {me.raystubbs.clj-arsenal/basis
   {:local/root ".."}
-  
+
   me.raystubbs.clj-arsenal/check
-  {#_#_:git/url "https://github.com/clj-arsenal/check.git"
-   #_#_:git/sha "a15d24fe5be392090bcbd457f54d978d302dbd93"
-   :local/root "../../check"}
-  
+  {:mvn/version "0.0.4"}
+
   me.raystubbs.clj-arsenal/log
-  {#_#_:git/url "https://github.com/clj-arsenal/log.git"
-   #_#_:git/sha "6f49191729472c1d75c9074e17fa53c74ace84c3"
-   :local/root "../../log"}}}
+  {:mvn/version "0.0.2"}}}

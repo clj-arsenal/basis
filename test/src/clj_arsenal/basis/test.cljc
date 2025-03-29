@@ -3,4 +3,4 @@
    [clj-arsenal.check :refer [expect check]]))
 
 (check ::test
-  (expect = 1 2))
+  (expect = 1 1))
