@@ -6,7 +6,7 @@
    :ns-default clj-arsenal.build}}
 
  :clj-arsenal.build/meta
- {:version "0.0.8"
+ {:version "0.0.9"
   :name me.raystubbs.clj-arsenal/basis
   :license "The MIT License"
   :license-url "https://opensource.org/license/mit/"
