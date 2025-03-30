@@ -2,9 +2,6 @@
   (:require
    [clj-arsenal.basis.protocols.chain :as chain]
    [clj-arsenal.basis.protocols.err :as err]
-   [clj-arsenal.basis.protocols.notifier :as notifier]
-   [clj-arsenal.basis.protocols.duration :as duration]
-   [clj-arsenal.basis.impl :as impl]
    [clojure.walk :as walk]))
 
 (defn- gather*
@@ -35,7 +32,7 @@
 
 (def ^:dynamic *expand-host* nil)
 
-(defn expand-catch-any-type
+(defn- expand-catch-any-type
   []
   (case *expand-host*
     :cljs :default
@@ -104,6 +101,21 @@
     (throw (arg-err "Syntax error - conds vector must have even number of forms")))
   `(cond ~@conds :else ~(body-fn body)))
 
+(defn expand-inline-await
+  [[bindings & body] body-fn]
+  (when-not (vector? bindings)
+    (throw (arg-err "Syntax error - expected bindings vector after :await")))
+  (when-not (even? (count bindings))
+    (throw (arg-err "Syntax error - bindings vector must have even number of forms")))
+  (let
+    [binding-pairs (partition 2 bindings)]
+    `(clj-arsenal.basis/chainable
+       (fn [continue#]
+         (clj-arsenal.basis/chain-all
+           ~(mapv second binding-pairs)
+           (fn [~(mapv first binding-pairs)]
+             (continue# ~(body-fn body))))))))
+
 (defn expand-m-body
   [forms]
   (loop
@@ -122,6 +134,7 @@
           :catch `(try ~@linear-exprs ~(expand-inline-catch tail expand-m-body))
           :finally `(try ~@linear-exprs (finally ~(expand-m-body tail)))
           :cond `(do ~@linear-exprs ~(expand-inline-cond tail expand-m-body))
+          :await `(do ~@linear-exprs ~(expand-inline-await tail expand-m-body))
           (recur tail (conj linear-exprs head)))))))
 
 (defn chain
