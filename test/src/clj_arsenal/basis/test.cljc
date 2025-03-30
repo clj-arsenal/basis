@@ -74,7 +74,7 @@
      s (samp :string)]
     (m
       (throw (ex-info "something" {}))
-      :catch b/err-any _
+      :catch b/err-any err
       err
       
       :finally

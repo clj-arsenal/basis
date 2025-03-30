@@ -40,7 +40,11 @@
                     (expand-m-body (rest tail))])]))
 
             :finally
-            (expand-m-body tail)
+            (api/list-node
+              (concat
+                [do-node]
+                linear-expr-nodes
+                [(expand-m-body tail)]))
 
             :catch
             (cond
@@ -77,7 +81,6 @@
               (cond
                 (odd? (count (:children conds)))
                 (do
-                  (prn :conds conds)
                   (api/reg-finding!
                     (merge
                       {:message "Conds vector must have even number of forms"
@@ -142,5 +145,4 @@
 
 (defn m
   [{:keys [node]}]
-  (prn (expand-m-body (rest (:children node))))
   {:node (expand-m-body (rest (:children node)))})
