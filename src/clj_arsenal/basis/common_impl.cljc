@@ -42,7 +42,7 @@
     :cljd 'dynamic
     :clj 'Throwable))
 
-(defn expand-use-body-try-finally
+(defn expand-dispose-body-try-finally
   [binding-pairs body]
   (if (empty? binding-pairs)
     body
@@ -50,7 +50,7 @@
       `(let [value# ~first-expr]
          (try
            (let [~first-pattern value#]
-             ~(expand-use-body-try-finally (rest binding-pairs) body))
+             ~(expand-dispose-body-try-finally rest-pairs body))
            (finally
              (clj-arsenal.basis/dispose! value#)))))))
 
@@ -62,7 +62,7 @@
     (when-not (even? (count bindings))
       (throw (arg-err "Syntax error - binding vector must have even number of forms")))
     (let [binding-pairs (partition 2 bindings)]
-      (expand-use-body-try-finally binding-pairs body))))
+      (expand-dispose-body-try-finally binding-pairs body))))
 
 (defn expand-inline-let
   [[bindings & body] body-fn]

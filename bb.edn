@@ -38,4 +38,7 @@
      (shell {:dir "test/cljd"} "dart run"))}
 
   test-all
-  {:depends [test-clj test-cljs test-cljd]}}}
+  {:depends [test-clj test-cljs test-cljd]}
+  
+  nrepl
+  (shell {:dir "test/cljs"} "clj -M:cljs node-repl")}}
