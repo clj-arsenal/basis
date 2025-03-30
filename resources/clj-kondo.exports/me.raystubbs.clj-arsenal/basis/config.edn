@@ -1,0 +1,16 @@
+{:linters
+ {:clj-arsenal.basis/inline-await-syntax
+  {:level :error}
+  
+  :clj-arsenal.basis/wrong-number-of-forms
+  {:level :error}
+  
+  :clj-arsenal.basis/inline-catch-syntax
+  {:level :error}}
+
+ :lint-as
+ {clj-arsenal.basis/with-dispose clojure.core/let}
+
+ :hooks
+ {:analyze-call
+  {clj-arsenal.basis/m hooks.basis/m}}}

@@ -16,7 +16,7 @@
     (expect = s
       (m
         (throw (ex-info "nothing" {}))
-        :catch b/err-any err
+        :catch b/err-any _
         (throw (ex-info "nothing" {:test-string s}))
         :catch b/err-any err
         (-> err ex-data :test-string)))))
@@ -64,7 +64,7 @@
      s (samp :string)]
     (m
       :dispose
-      [x (reify Dispose (-dispose! [_] (reset! !store s)))]
+      [_ (reify Dispose (-dispose! [_] (reset! !store s)))]
       nil)
     (expect = @!store s)))
 
@@ -74,7 +74,7 @@
      s (samp :string)]
     (m
       (throw (ex-info "something" {}))
-      :catch b/err-any err
+      :catch b/err-any _
       err
       
       :finally
