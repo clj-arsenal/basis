@@ -1,4 +1,4 @@
-(ns clj-arsenal.basis.impl
+(ns ^:no-doc clj-arsenal.basis.impl
   (:require
     [clj-arsenal.basis.protocols.notifier :as notifier]
     [clj-arsenal.basis.protocols.err :as err]
