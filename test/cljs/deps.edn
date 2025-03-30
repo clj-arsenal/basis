@@ -6,10 +6,7 @@
   {:local/root "../.."}
 
   me.raystubbs.clj-arsenal/basis-test
-  {:local/root ".."}
-  
-  me.raystubbs.clj-arsenal/check
-  {:local/root "../../../check"}}
+  {:local/root ".."}}
 
  :aliases
  {:cljs
