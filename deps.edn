@@ -4,7 +4,7 @@
  :aliases
  {:build
   {:deps
-   {me.raystubbs.clj-arsenal/build {:mvn/version "0.0.5"}}
+   {me.raystubbs.clj-arsenal/build {:mvn/version "0.0.6"}}
 
    :ns-default clj-arsenal.build}
   
