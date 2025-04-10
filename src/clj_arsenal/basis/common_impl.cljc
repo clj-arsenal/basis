@@ -2,6 +2,7 @@
   (:require
    [clj-arsenal.basis.protocols.chain :as chain]
    [clj-arsenal.basis.protocols.err :as err]
+   [clj-arsenal.basis.impl :as impl]
    [clojure.walk :as walk]))
 
 (defn- gather*
@@ -146,9 +147,9 @@
 
 #?(:cljd
    (defn err-any
-     ([err st]
-      (when (satisfies? err/Err err)
-        (impl/err :data (merge {:st st :p (.-runtimeType err)} (impl/err-data err))))))
+     [err st]
+     (when (satisfies? err/Err err)
+       (impl/err :data (merge {:st st :p (.-runtimeType err)} (impl/err-data err)))))
 
    :default
    (defn err-any
