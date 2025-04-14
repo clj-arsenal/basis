@@ -141,5 +141,8 @@
   Future
   (-chain
     [fut continue]
-    (.then fut continue .onError continue)
+    (.then fut continue
+      .onError
+      (fn [error st]
+        (continue (err :data (merge {:st st :p (.-runtimeType error)} (err-data error))))))
     nil))

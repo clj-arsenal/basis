@@ -141,7 +141,7 @@
 (defn chain
   [x continue]
   (if (satisfies? chain/Chain x)
-    (chain/-chain x continue)
+    (chain/-chain x #(chain % continue))
     (continue x))
   nil)
 
