@@ -112,8 +112,9 @@
     [binding-pairs (partition 2 bindings)]
     `(clj-arsenal.basis/chainable
        (fn [continue#]
-         (clj-arsenal.basis/chain-all
-           ~(mapv second binding-pairs)
+         (clj-arsenal.basis/chain
+           (clj-arsenal.basis/chain-all-seq
+             ~(mapv second binding-pairs))
            (fn [~(mapv first binding-pairs)]
              (continue# ~(body-fn body))))))))
 
@@ -186,110 +187,76 @@
     (catch #?(:cljd dynamic :clj Throwable :cljs :dynamic) ex #?@(:cljd [st])
       (err-any ex #?(:cljd st)))))
 
-(defrecord ^:private Placeholder [k])
-(defonce ^:private !placeholder-key (volatile! 0))
+(defn chain-all-seq
+  [s]
+  (loop
+    [remaining s
+     !done (transient [])]
+    (if (empty? remaining)
+      (seq (persistent! !done))
+      (let
+        [[next-item & rest-items] remaining]
+        (if-not (satisfies? chain/Chain next-item)
+          (recur rest-items (conj! !done next-item))
+          (chainable
+            (fn [continue]
+              (chain next-item
+                (fn [next-item-resolved]
+                  (chain (chain-all-seq rest-items)
+                    (fn [rest-items-resolved]
+                      (continue
+                        (concat
+                          (persistent! !done)
+                          [next-item-resolved]
+                          rest-items-resolved)))))))))))))
 
-(defn- placeholder
-  []
-  (->Placeholder (vswap! !placeholder-key #?(:cljd inc :default unchecked-inc))))
-
-(defn- placeholder?
-  [x]
-  (instance? Placeholder x))
-
-(defn chain-all
-  [form continue & {:keys [mapper]}]
-  (try
-    (let
-      [!resolved (atom {})
-       mapper (or mapper identity)
-
-       wait-resolved
-       (fn wait-resolved [deps f]
-         (let
-           [watch-key (gensym)
-            !done? (atom false)
-
-            on-resolved
-            (fn [resolved]
+(defn chain-all-coll
+  [coll]
+  (with-meta
+    (cond
+      (map? coll)
+      (->
+        (chain-all-seq
+          (map
+            (fn [[k v :as e]]
               (cond
-                (and (satisfies? err/Err resolved) (compare-and-set! !done? false true))
-                (do
-                  (continue resolved)
-                  (remove-watch !resolved watch-key))
+                (and (satisfies? chain/Chain k) (satisfies? chain/Chain v))
+                (chainable
+                  (fn [continue]
+                    (chain k
+                      (fn [k-resolved]
+                        (chain v
+                          (fn [v-resolved]
+                            (continue [k-resolved v-resolved])))))))
 
-                (and (every? #(contains? resolved %) deps) (compare-and-set! !done? false true))
-                (do
-                  (f resolved)
-                  (remove-watch !resolved watch-key))))]
-           (add-watch !resolved watch-key (fn [_ _ _ resolved] (on-resolved resolved)))
-           (on-resolved @!resolved)))
+                (satisfies? chain/Chain k)
+                (chainable
+                  (fn [continue]
+                    (chain k
+                      (fn [k-resolved]
+                        (continue [k-resolved v])))))
 
-       walked
-       (walk/postwalk
-         (fn [x]
-           (cond
-             (map-entry? x)
-             x
+                (satisfies? chain/Chain v)
+                (chainable
+                  (fn [continue]
+                    (chain v
+                      (fn [v-resolved]
+                        (continue [k v-resolved])))))
 
-             :else
-             (let
-               [deps
-                (when (coll? x)
-                  (filter placeholder? (if (map? x) (mapcat identity x) x)))]
-               (if (empty? deps)
-                 (let [x-mapped (mapper x)]
-                   (if-not (satisfies? chain/Chain x-mapped)
-                     x-mapped
-                     (let [p (placeholder)]
-                       (chain
-                         x-mapped
-                         (fn [x-resolved]
-                           (when (map? @!resolved)
-                             (if (satisfies? err/Err x-resolved)
-                               (reset! !resolved x-resolved)
-                               (swap! !resolved assoc p x-resolved)))))
-                       p)))
-                 (let [p (placeholder)]
-                   (wait-resolved
-                     deps
-                     (fn [resolved]
-                       (let [x-deps-resolved
-                             (walk/walk
-                               (fn [y]
-                                 (cond
-                                   (map-entry? y)
-                                   (let [[k v] y]
-                                     [(cond->> k (placeholder? k) (get resolved))
-                                      (cond->> v (placeholder? v) (get resolved))])
+                :else
+                e))
+            coll))
+        (chain
+          (fn [entries-resolved]
+            (into {} entries-resolved))))
 
-                                   (placeholder? y)
-                                   (get resolved y)
+      (seq? coll)
+      (chain-all-seq coll)
 
-                                   :else
-                                   y))
-                               identity
-                               x)
-
-                             x-mapped (mapper x-deps-resolved)]
-                         (if-not (satisfies? chain/Chain x-mapped)
-                           (when (map? @!resolved)
-                             (swap! !resolved assoc p x-mapped))
-                           (chain
-                             x-mapped
-                             (fn [x-resolved]
-                               (when (map? @!resolved)
-                                 (if (satisfies? err/Err x-resolved)
-                                   (reset! !resolved x-resolved)
-                                   (swap! !resolved assoc p x-resolved)))))))))
-                   p)))))
-         form)]
-      (if-not (placeholder? walked)
-        (continue walked)
-        (wait-resolved
-          #{walked}
-          (fn [resolved]
-            (continue (get resolved walked))))))
-    (catch #?(:cljd dynamic :clj Throwable :cljs :dynamic) ex #?@(:cljd [st])
-      (continue (err-any ex #?(:cljd st)))))
-  nil)
+      :else
+      (chainable
+        (fn [continue]
+          (chain (chain-all-seq coll)
+            (fn [resolved]
+              (continue (into (empty coll) resolved)))))))
+    (meta coll)))

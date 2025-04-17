@@ -298,20 +298,25 @@ Or use an m-block:
 
 (def 
   ^{:arglists
-    '[[form continue & {:keys [mapper]}]]
+    '[[s]]
     
     :doc "
-Walks the given `form`, resolving anything that satisfies Chain, then
-calling `continue` with the resulting form.
+Resolves all top-level chainables in `s`, a seqable.
+Returns either a seq of `s` (if no chainables are
+present) or a chainable that resolves to a seq of `s`,
+with all chainable items resolved.
+"} chain-all-seq common-impl/chain-all-seq)
 
-If any of the values that satisfy Chain resolve to an error, immediately
-calls `continue` with the error.
-
-If a `mapper` is given, it will be called to substitute each subform before
-checking if it satisfies Chain.
-
-Returns `nil`.
-"} chain-all common-impl/chain-all)
+(def 
+  ^{:arglists
+    '[[coll]]
+    
+    :doc "
+Resolves all top-level chainables in `coll`, a collection.
+Returns either `coll` (if no chainables are
+present) or a chainable that resolves to `coll`,
+with all chainable items resolved.
+"} chain-all-coll common-impl/chain-all-coll)
 
 (def
   ^{:arglists
