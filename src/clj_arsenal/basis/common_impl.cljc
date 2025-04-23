@@ -212,51 +212,55 @@
 
 (defn chain-all-coll
   [coll]
-  (with-meta
-    (cond
-      (map? coll)
-      (->
-        (chain-all-seq
-          (map
-            (fn [[k v :as e]]
-              (cond
-                (and (satisfies? chain/Chain k) (satisfies? chain/Chain v))
-                (chainable
-                  (fn [continue]
-                    (chain k
-                      (fn [k-resolved]
-                        (chain v
-                          (fn [v-resolved]
-                            (continue [k-resolved v-resolved])))))))
+  (cond
+    (map? coll)
+    (chainable
+      (fn [continue]
+        (->
+          (chain-all-seq
+            (map
+              (fn [[k v :as e]]
+                (cond
+                  (and (satisfies? chain/Chain k) (satisfies? chain/Chain v))
+                  (chainable
+                    (fn [continue]
+                      (chain k
+                        (fn [k-resolved]
+                          (chain v
+                            (fn [v-resolved]
+                              (continue [k-resolved v-resolved])))))))
 
-                (satisfies? chain/Chain k)
-                (chainable
-                  (fn [continue]
-                    (chain k
-                      (fn [k-resolved]
-                        (continue [k-resolved v])))))
+                  (satisfies? chain/Chain k)
+                  (chainable
+                    (fn [continue]
+                      (chain k
+                        (fn [k-resolved]
+                          (continue [k-resolved v])))))
 
-                (satisfies? chain/Chain v)
-                (chainable
-                  (fn [continue]
-                    (chain v
-                      (fn [v-resolved]
-                        (continue [k v-resolved])))))
+                  (satisfies? chain/Chain v)
+                  (chainable
+                    (fn [continue]
+                      (chain v
+                        (fn [v-resolved]
+                          (continue [k v-resolved])))))
 
-                :else
-                e))
-            coll))
-        (chain
-          (fn [entries-resolved]
-            (into {} entries-resolved))))
+                  :else
+                  e))
+              coll))
+          (chain
+            (fn [entries-resolved]
+              (continue (with-meta (into {} entries-resolved) (meta coll))))))))
 
-      (seq? coll)
-      (chain-all-seq coll)
+    (seq? coll)
+    (chainable
+      (fn [continue]
+        (chain (chain-all-seq coll)
+          (fn [values]
+            (continue (with-meta values (meta coll)))))))
 
-      :else
-      (chainable
-        (fn [continue]
-          (chain (chain-all-seq coll)
-            (fn [resolved]
-              (continue (into (empty coll) resolved)))))))
-    (meta coll)))
+    :else
+    (chainable
+      (fn [continue]
+        (chain (chain-all-seq coll)
+          (fn [resolved]
+            (continue (with-meta (into (empty coll) resolved) (meta coll)))))))))
