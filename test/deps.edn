@@ -6,7 +6,7 @@
   {:local/root ".."}
 
   me.raystubbs.clj-arsenal/check
-  {:mvn/version "0.0.5"}
+  {:mvn/version "0.0.6"}
 
   me.raystubbs.clj-arsenal/log
   {:mvn/version "0.0.2"}}}

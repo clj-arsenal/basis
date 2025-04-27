@@ -124,13 +124,16 @@
 (check ::chaining
   (let
     [!r (atom {})]
-    (b/chainable
-      (fn [continue]
-        (b/chain (b/async #(swap! !r assoc :r1 1))
-          (fn [v]
-            (swap! !r assoc :r2 (inc (:r1 v)))
-            (continue)))))
-    (expect = {:r1 1 :r2 2} @!r)))
+    (b/chain
+      (b/chainable
+        (fn [continue]
+          (b/chain
+            (b/async #(swap! !r assoc :r1 1))
+            (fn [v]
+              (swap! !r assoc :r2 (inc (:r1 v)))
+              (continue nil)))))
+      (fn [_]
+        (expect = {:r1 1 :r2 2} @!r)))))
 
 (check ::disposing
   (let [!r (atom nil)]
