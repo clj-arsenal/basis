@@ -1,7 +1,9 @@
 (ns clj-arsenal.basis.once
   #?(:cljs (:require-macros clj-arsenal.basis.once))
   #?@(:cljd [(:host-ns (:import (java.util HashMap)))]
-      :clj [(:import (java.util HashMap))]))
+      :clj [(:import (java.util HashMap))])
+  (:require
+   [clojure.walk :as walk]))
 
 (defn- ^:macro-support mutable-map
   []
@@ -30,15 +32,24 @@
 
 (defn ^:macro-support constant?
   [form]
-  (or
-    (keyword? form)
-    (string? form)
-    (number? form)
-    (nil? form)
-    (and (seq? form)  (= `once (first form)) (constant? (second form)))
-    (and (seq? form) (= `list (first form)) (every? constant? (rest form)))
-    (and (coll? form) (every? constant? form))
-    (and (tagged-literal? form) (constant? (:form form)))))
+  (cond
+    (seq? form)
+    (case (first form)
+      (`once `list)
+      (every? constant? (rest form))
+
+      false)
+
+    (coll? form)
+    (every? constant? form)
+
+    :else
+    (or
+      (keyword? form)
+      (string? form)
+      (number? form)
+      (nil? form)
+      (and (tagged-literal? form) (constant? (:form form))))))
 
 (defn ^:no-doc ^:macro-support -host-interned?
   [form]
@@ -46,7 +57,19 @@
     (string? form)
     (number? form)
     (nil? form)
-    #?(:clj (keyword? form))))
+    (keyword? form)))
+
+(defn- ^:macro-support onceify*
+  [form]
+  (cond
+    (and (seq? form) (= 'clj-arsenal.basis.once/once (first form)))
+    form
+
+    (and (not (-host-interned? form)) (constant? form))
+    (list 'clj-arsenal.basis.once/once form)
+    
+    :else
+    (walk/walk (fn [x] (cond-> x (not (map-entry? x)) onceify*)) identity form)))
 
 #?(:clj
    (defmacro once
@@ -61,3 +84,8 @@
               (let [v# ~expr]
                 (-mput !once-vals ~k v#)
                 v#)))))))
+
+#?(:clj
+   (defmacro onceify
+     [form]
+     (onceify* form)))
