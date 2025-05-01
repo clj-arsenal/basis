@@ -62,7 +62,10 @@
 (defn- ^:macro-support onceify*
   [form]
   (cond
-    (and (seq? form) (= 'clj-arsenal.basis.once/once (first form)))
+    (and
+      (seq? form)
+      (#{'clj-arsenal.basis.once/once 'clj-arsenal.basis.once/onceify}
+        (first form)))
     form
 
     (and (not (-host-interned? form)) (constant? form))
