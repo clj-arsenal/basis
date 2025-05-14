@@ -131,6 +131,6 @@
   (-chain
     [p continue]
     (-> p
-        (.then p continue)
-        (.catch p continue))
+      (.then continue)
+      (.catch continue))
     nil))
