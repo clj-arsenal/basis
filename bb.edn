@@ -9,7 +9,12 @@
   (binding
     [*out* *err*]
     (println "Running Babashka tests...")
-    (shell "bb -cp src;test/src;../check/src;../log/src test/bb/run.clj"))
+    (shell
+      (str "bb -cp "
+        (clojure.string/join
+          (System/getProperty "path.separator")
+          ["src" "test/src" "../check/src" "../log/src"])
+        " test/bb/run.clj")))
 
   test-cljs:compile
   (binding

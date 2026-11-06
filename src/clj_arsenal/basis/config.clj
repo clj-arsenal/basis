@@ -50,12 +50,14 @@
       (catch Exception _
         nil))
     (when (bb?)
-      (merge
-        (try
-          (bb-basis)
-          (catch Exception _
-            nil))
-        (override-config)))))
+      (let [basis (try
+                    (bb-basis)
+                    (catch Exception _
+                      nil))
+            overrides (override-config)]
+        (cond-> (merge basis overrides)
+          overrides
+          (update :argmap merge overrides))))))
 
 (defn get-in-config
   ([path]
