@@ -5,6 +5,12 @@
     (println "Running Clojure tests...")
     (shell {:dir "test/clj"} "clj -X:test test/run"))
 
+  test-bb
+  (binding
+    [*out* *err*]
+    (println "Running Babashka tests...")
+    (shell "bb -cp src;test/src;../check/src;../log/src test/bb/run.clj"))
+
   test-cljs:compile
   (binding
     [*out* *err*]
